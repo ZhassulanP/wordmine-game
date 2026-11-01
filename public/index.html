@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#15151b">
+  <meta name="description" content="Слова-мины для своей компании. Объясняйте слова, ставьте ловушки и играйте без лимита в 10 человек.">
+  <title>Слова-мины · ACM</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="header wrap">
+    <a class="brand" href="/" aria-label="Слова-мины — главная"><img src="/favicon.svg" alt="" width="36" height="36"><span>слова<span class="brand-light">мины</span><small>ACM EDITION</small></span></a>
+    <div class="header-right"><span class="private-note"><i></i> Для своей компании</span><button class="text-button" id="rules-button">Как играть <span>↗</span></button></div>
+  </header>
+  <main id="app" class="wrap"><p class="loading">Собираем компанию…</p></main>
+  <footer class="footer wrap"><span>Хорошая компания. Опасные ассоциации.</span><span>Сделано для ACM <span class="footer-star">✳</span></span></footer>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="rules" class="dialog">
+    <button class="close text-button" id="close-rules" aria-label="Закрыть правила">✕</button>
+    <span class="eyebrow">МИНУТА НА ПРАВИЛА</span><h2>Слова простые.<br>Всё остальное — ловушка.</h2>
+    <ol class="rule-list"><li><strong>Получите роли</strong><p>Один объясняет, второй угадывает. Все остальные — минёры. Для игры нужно минимум три человека.</p></li><li><strong>Заминируйте объяснение</strong><p>Все, кроме угадывающего, видят секретное слово. Каждый минёр тайно вводит одно слово, которое, по его мнению, прозвучит в объяснении или ответе.</p></li><li><strong>Объясняйте вслух</strong><p>Общайтесь за одним столом или в видеозвонке. Нельзя называть само слово, однокоренные слова или перевод. Мины объясняющий и угадывающий не видят.</p></li><li><strong>Следите за ловушками</strong><p>Прозвучала мина? Её автор нажимает «Моя мина сработала», а ведущий подтверждает подрыв. Засчитываются и формы этого слова — по договорённости компании.</p></li><li><strong>Собирайте очки</strong><p>Угадали — объясняющий и угадывающий получают по 1 очку. Подорвались — по 1 очку авторам сработавшей мины. Время вышло — без очков. Затем роли меняются. За круг каждый объясняет один раз.</p></li></ol>
+    <p class="note">Пароль каждой комнаты — ACM (также подходит acm). Ссылка определяет комнату. Размер компании задаёт ведущий.</p>
+  </dialog>
+</body>
+</html>
