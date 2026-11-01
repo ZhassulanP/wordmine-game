@@ -42,7 +42,7 @@ npm run build
 
 ## Cloudflare Workers + D1
 
-Текущая цель размещения — Cloudflare Workers. `wrangler.jsonc` связывает Worker `word-mine` со встроенной базой D1 через `env.DB`; каталог миграций — `drizzle`. Для этого варианта `DATABASE_URL` и Neon не требуются. Все страницы, стили и клиентский код включаются в один Worker-файл при сборке.
+Текущая цель размещения — Cloudflare Workers. `wrangler.jsonc` связывает Worker `wordmine-game` со встроенной базой D1 через `env.DB`; каталог миграций — `drizzle`. Для этого варианта `DATABASE_URL` и Neon не требуются. Все страницы, стили и клиентский код включаются в один Worker-файл при сборке.
 
 Первоначальная настройка в своём аккаунте Cloudflare:
 
