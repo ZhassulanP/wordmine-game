@@ -15,7 +15,7 @@ export default {
     if (url.pathname.startsWith('/api/')) {
       if (!env.DB) return Response.json({error:'Хранилище комнат ещё не подключено.'},{status:503});
       const store = {
-        async create(room) { const result = await env.DB.prepare('INSERT OR IGNORE INTO rooms(code,version,updated,data) VALUES(?,0,?,?)').bind(room.code,Date.now(),JSON.stringify(room)).run(); return result.meta.changes === 1; },
+        async create(room) { const result = await env.DB.prepare("INSERT INTO rooms(code,version,updated,data) VALUES(?,0,?,?) ON CONFLICT(code) DO UPDATE SET version=rooms.version+1,updated=excluded.updated,data=excluded.data WHERE (json_array_length(rooms.data,'$.players')=0 AND COALESCE(json_array_length(rooms.data,'$.departed'),0)=0) OR rooms.updated < ?").bind(room.code,Date.now(),JSON.stringify(room),Date.now()-7*86400000).run(); return result.meta.changes === 1; },
         async get(code) { const row = await env.DB.prepare('SELECT * FROM rooms WHERE code=?').bind(code).first(); return row && {room:JSON.parse(row.data),version:row.version,updated:row.updated}; },
         async save(room, version, now) { const result = await env.DB.prepare('UPDATE rooms SET data=?,version=version+1,updated=? WHERE code=? AND version=?').bind(JSON.stringify(room),now,room.code,version).run(); return result.meta.changes === 1; }
       };

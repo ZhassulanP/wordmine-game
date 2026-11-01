@@ -1,0 +1,9 @@
+.git
+.openai
+.env*
+data
+dist
+outputs
+node_modules
+test
+drizzle

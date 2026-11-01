@@ -12,7 +12,7 @@ const db = new DatabaseSync(resolve(dataDir, 'rooms.sqlite'));
 db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');
 db.exec((await readFile(resolve(root, 'drizzle/0000_rooms.sql'), 'utf8')).replaceAll('CREATE TABLE ', 'CREATE TABLE IF NOT EXISTS ').replaceAll('CREATE INDEX ', 'CREATE INDEX IF NOT EXISTS '));
 const store = {
-  async create(room) { return db.prepare('INSERT OR IGNORE INTO rooms(code,version,updated,data) VALUES(?,0,?,?)').run(room.code, Date.now(), JSON.stringify(room)).changes === 1; },
+  async create(room) { return db.prepare("INSERT INTO rooms(code,version,updated,data) VALUES(?,0,?,?) ON CONFLICT(code) DO UPDATE SET version=rooms.version+1,updated=excluded.updated,data=excluded.data WHERE (json_array_length(rooms.data,'$.players')=0 AND COALESCE(json_array_length(rooms.data,'$.departed'),0)=0) OR rooms.updated < ?").run(room.code, Date.now(), JSON.stringify(room), Date.now() - 7 * 86400000).changes === 1; },
   async get(code) { const row = db.prepare('SELECT * FROM rooms WHERE code=?').get(code); return row && { room: JSON.parse(row.data), version: row.version, updated: row.updated }; },
   async save(room, version, now) { return db.prepare('UPDATE rooms SET data=?,version=version+1,updated=? WHERE code=? AND version=?').run(JSON.stringify(room), now, room.code, version).changes === 1; }
 };

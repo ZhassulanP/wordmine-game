@@ -1,7 +1,7 @@
 import { GameError, checkPassword, newPlayer, createRoom, joinRoom, act, tick, view } from './game.js';
 
 const json = (data, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
-const roomCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), n => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[n % 32]).join('');
+const roomCode = () => String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, '0');
 export async function api(request, store) {
   try {
     const url = new URL(request.url);
@@ -19,13 +19,14 @@ export async function api(request, store) {
       checkPassword(data.password);
       const auth = crypto.randomUUID() + crypto.randomUUID();
       const p = newPlayer(data.name, auth);
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 100; i++) {
         const room = createRoom(roomCode(), p, data.settings, Date.now());
         if (await store.create(room)) return json({ token: auth, room: view(room, auth) }, 201);
       }
       throw new GameError('Не удалось создать комнату. Попробуйте ещё раз.', 503);
     }
-    const match = url.pathname.match(/^\/api\/rooms\/([A-Z2-9]{6})(?:\/(join|action))?$/);
+    // Keep existing six-character invitations valid; new rooms use four digits.
+    const match = url.pathname.match(/^\/api\/rooms\/([0-9]{4}|[A-Z2-9]{6})(?:\/(join|action))?$/);
     if (!match) throw new GameError('Комната не найдена.', 404);
     const [, code, route] = match;
     if (request.method !== (route ? 'POST' : 'GET')) throw new GameError('Метод не поддерживается.', 405);
@@ -37,18 +38,20 @@ export async function api(request, store) {
     // Compare-and-swap retries preserve simultaneous joins, mines and score updates.
     for (let attempt = 0; attempt < 15; attempt++) {
       const record = await store.get(code);
-      if (!record || Date.now() - record.updated > 7 * 86400000 || !record.room.players.length) throw new GameError('Комната не найдена или срок её хранения истёк.', 404);
+      if (!record || Date.now() - record.updated > 7 * 86400000 ||
+        (!record.room.players.length && !(route === 'join' && record.room.departed?.length))) throw new GameError('Комната не найдена или срок её хранения истёк.', 404);
       const room = record.room;
       const now = Date.now();
       let changed = false;
-      if (route === 'join') { joinRoom(room, joinedPlayer); changed = true; }
+      let rejoined = false;
+      if (route === 'join') { rejoined = joinRoom(room, joinedPlayer, now).id !== joinedPlayer.id; changed = true; }
       else if (route === 'action') { act(room, token, data.action, data.data, now); changed = true; }
       else {
         view(room, token, now); // Authenticate before advancing time.
         changed = tick(room, now);
       }
       const auth = joinedPlayer?.token || token;
-      const response = route === 'action' && data.action === 'leave' ? { left: true } : { room: view(room, auth, now), ...(joinedPlayer && { token: auth }) };
+      const response = route === 'action' && data.action === 'leave' ? { left: true } : { room: view(room, auth, now), ...(joinedPlayer && { token: auth, rejoined }) };
       if (!changed || await store.save(room, record.version, now)) return json(response);
     }
     throw new GameError('Комната занята. Повторите действие через секунду.', 409);

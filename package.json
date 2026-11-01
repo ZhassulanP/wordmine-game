@@ -3,11 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.13" },
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js",
     "build": "node scripts/build.mjs",
+    "build:vercel": "node scripts/build-vercel.mjs",
+    "db:migrate": "node scripts/migrate-postgres.mjs",
     "test": "node --test"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0"
   }
 }
