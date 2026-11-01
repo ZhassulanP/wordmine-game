@@ -38,5 +38,5 @@ const server = createServer(async (req, res) => {
     }
   } catch (e) { console.error(e); res.writeHead(500); res.end('Server error'); }
 });
-server.listen(port, '0.0.0.0', () => console.log(`Слова-мины: http://localhost:${port}\nFor friends on this network, use this computer's LAN IP and port ${port}.`));
+server.listen(port, '0.0.0.0', () => console.log(`Word Mine: http://localhost:${port}\nFor friends on this network, use this computer's LAN IP and port ${port}.`));
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close(() => { db.close(); process.exit(0); }));

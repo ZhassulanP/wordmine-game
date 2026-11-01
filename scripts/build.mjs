@@ -32,5 +32,5 @@ await cp(new URL('drizzle/', root), new URL('dist/.openai/drizzle/', root), { re
 const module = await import(`data:text/javascript;base64,${Buffer.from(worker).toString('base64')}`);
 if (typeof module.default.fetch !== 'function') throw new Error('Invalid Worker');
 const response = await module.default.fetch(new Request('http://localhost/'), {});
-if (response.status !== 200 || !(await response.text()).includes('Слова-мины')) throw new Error('Invalid page');
+if (response.status !== 200 || !(await response.text()).includes('Word Mine')) throw new Error('Invalid page');
 console.log('Built and verified Worker + D1 migrations in dist/');

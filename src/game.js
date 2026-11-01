@@ -19,9 +19,6 @@ export function settings(input = {}, count = 0) {
   requireThat(useDefaultWords || customWords.length > 0, 'Добавьте свои слова или включите встроенный словарь.');
   return { capacity, duration: null, miningDuration: 60, cycles: integer(input.cycles ?? 1, 1, 20, 'Количество кругов'), customWords, useDefaultWords };
 }
-export function checkPassword(password) {
-  requireThat(typeof password === 'string' && password.toLowerCase() === 'acm', 'Неверный пароль комнаты.', 403);
-}
 export function newPlayer(name, token) {
   name = String(name || '').trim();
   requireThat(name.length >= 1 && name.length <= 24, 'Имя должно содержать от 1 до 24 символов.');

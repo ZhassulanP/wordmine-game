@@ -10,7 +10,15 @@ const icon = (name, cls='role-icon') => `<svg class="${cls}" viewBox="0 0 33 33"
 let room = null, session = null, tab = new URLSearchParams(location.search).has('room') ? 'join' : 'create';
 let busy = false, polling = false, connected = true, offset = 0, signature = '', toastTimeout;
 const drafts = new Map();
-try { session = JSON.parse(sessionStorage.getItem('acm-session')); } catch {}
+function readStoredValue(storage, key, legacyKey) {
+  const current = storage.getItem(key);
+  if (current !== null) return current;
+  const previous = storage.getItem(legacyKey);
+  if (previous !== null) { storage.setItem(key, previous); storage.removeItem(legacyKey); }
+  return previous;
+}
+// Migrate the previous storage keys so existing players stay connected.
+try { session = JSON.parse(readStoredValue(sessionStorage, 'word-mine-session', 'acm-session')); } catch {}
 
 function toast(message) {
   $('#toast').textContent = message; $('#toast').hidden = false;
@@ -25,22 +33,21 @@ function entry() {
   const legacyInvite = /^[A-Z2-9]{6}$/.test(invite.toUpperCase());
   const codeLength = legacyInvite ? 6 : 4;
   app.innerHTML = `<section class="hero"><div class="hero-copy"><span class="eyebrow">СЛОВЕСНАЯ ИГРА С ПОДВОХОМ</span>${icon('mine','little-mine')}<h1>Одно слово.<br><em>Сотня ловушек.</em></h1><p class="hero-description">Объясни слово друзьям. Обойди их мины.<br>И постарайся не сказать лишнего.</p><div class="hero-tags"><span class="tag">От 3 игроков</span><span class="tag">Без лимита в 10</span><span class="tag">Вживую или онлайн</span></div></div>
-  <div class="entry-card"><div class="card-top"><span class="mini-label">КОМПАНИЯ УЖЕ СОБИРАЕТСЯ</span><span class="acm-stamp">ACM ✳</span></div><div class="tabs" role="tablist" aria-label="Вход в игру"><button class="tab ${tab==='create'?'active':''}" role="tab" aria-selected="${tab==='create'}" data-tab="create">Создать комнату</button><button class="tab ${tab==='join'?'active':''}" role="tab" aria-selected="${tab==='join'}" data-tab="join">Присоединиться</button></div>
+  <div class="entry-card"><div class="card-top"><span class="mini-label">КОМПАНИЯ УЖЕ СОБИРАЕТСЯ</span><span class="brand-stamp">Word Mine ✳</span></div><div class="tabs" role="tablist" aria-label="Вход в игру"><button class="tab ${tab==='create'?'active':''}" role="tab" aria-selected="${tab==='create'}" data-tab="create">Создать комнату</button><button class="tab ${tab==='join'?'active':''}" role="tab" aria-selected="${tab==='join'}" data-tab="join">Присоединиться</button></div>
   <form id="entry-form" class="entry-form"><div class="field"><label for="name">Как тебя зовут?</label><input name="name" id="name" placeholder="Имя или классный ник" maxlength="24" autocomplete="nickname" required></div>
   ${tab==='create'?'<div class="field"><label for="capacity">Сколько будет игроков?</label><input id="capacity" name="capacity" type="number" min="3" max="1000000" step="1" placeholder="Без ограничений"><span class="field-help">Любое число от 3. Оставь пустым — места хватит всем.</span></div>':`<div class="field"><label for="code">Код комнаты</label><input id="code" name="code" placeholder="Например, 1234" value="${esc(invite.toUpperCase())}" minlength="${codeLength}" maxlength="${codeLength}" pattern="${legacyInvite?'[A-Za-z2-9]{6}':'[0-9]{4}'}" inputmode="${legacyInvite?'text':'numeric'}" spellcheck="false" required></div>`}
-  <div class="field"><label for="password">Пароль компании</label><div class="password-wrap"><input id="password" name="password" type="password" placeholder="Тот самый пароль" autocomplete="current-password" required><button class="eye" type="button" aria-label="Показать пароль" id="toggle-password">◉</button></div><span class="field-help">Один для всех комнат. Спроси у организатора.</span></div><p class="error" id="entry-error" role="alert"></p><button class="primary full" type="submit">${tab==='create'?'Собрать компанию':'Войти в комнату'}<span class="button-arrow">→</span></button><p class="form-note">${tab==='join'?'Возвращаешься? Прежний ник восстановит твои очки и очередь.':'Без регистрации. Только ты и твои друзья.'}</p></form></div></section>
+  <p class="error" id="entry-error" role="alert"></p><button class="primary full" type="submit">${tab==='create'?'Собрать компанию':'Войти в комнату'}<span class="button-arrow">→</span></button><p class="form-note">${tab==='join'?'Возвращаешься? Прежний ник восстановит твои очки и очередь.':'Без регистрации. Только ты и твои друзья.'}</p></form></div></section>
   <section class="how-section"><div class="section-caption"><span>ТРИ РОЛИ. ОДНА БОЛЬШАЯ ЛОВУШКА.</span></div><div class="roles-grid"><article class="role-card"><span class="step">01 / ОБЪЯСНЯЙ</span>${icon('talk')}<h3>Подбирай слова</h3><p>Ты знаешь ответ. Помоги напарнику угадать, не произнося само слово.</p></article><article class="role-card"><span class="step">02 / МИНИРУЙ</span>${icon('mine')}<h3>Думай на шаг вперёд</h3><p>Загадай слово, которое наверняка прозвучит. Это и будет твоя мина.</p></article><article class="role-card"><span class="step">03 / УГАДЫВАЙ</span>${icon('guess')}<h3>Лови ассоциации</h3><p>Найди ответ раньше, чем сработает ловушка. Роли меняются каждый ход.</p></article></div></section>`;
-  try { $('#name').value = localStorage.getItem('acm-name') || ''; } catch {}
+  try { $('#name').value = readStoredValue(localStorage, 'word-mine-name', 'acm-name') || ''; } catch {}
   document.querySelectorAll('[data-tab]').forEach(button => button.onclick = () => { tab = button.dataset.tab; entry(); });
-  $('#toggle-password').onclick = () => { const input = $('#password'); input.type = input.type === 'password' ? 'text' : 'password'; $('#toggle-password').setAttribute('aria-label', input.type === 'password' ? 'Показать пароль' : 'Скрыть пароль'); };
   $('#entry-form').onsubmit = async e => {
     e.preventDefault(); if (busy) return;
     const values = Object.fromEntries(new FormData(e.currentTarget));
     const button = e.currentTarget.querySelector('[type=submit]'); button.disabled = true; busy = true; $('#entry-error').textContent = '';
     try {
-      const result = await request(tab==='create'?'/api/rooms':`/api/rooms/${values.code.trim().toUpperCase()}/join`, {name:values.name,password:values.password,settings:{capacity:values.capacity}});
+      const result = await request(tab==='create'?'/api/rooms':`/api/rooms/${values.code.trim().toUpperCase()}/join`, {name:values.name,settings:{capacity:values.capacity}});
       session = {code:result.room.code,token:result.token};
-      try { sessionStorage.setItem('acm-session', JSON.stringify(session)); localStorage.setItem('acm-name',values.name); } catch {}
+      try { sessionStorage.setItem('word-mine-session', JSON.stringify(session)); localStorage.setItem('word-mine-name',values.name); } catch {}
       history.replaceState(null,'',`/?room=${session.code}`);
       accept(result.room);
       if(result.rejoined) toast('С возвращением! Твои очки и очередь сохранены.');
@@ -77,7 +84,7 @@ function renderRoom() {
   const oldDetails = $('#advanced')?.open;
   const focused = document.activeElement?.id;
   const selection = document.activeElement && ['text','search'].includes(document.activeElement.type) ? document.activeElement.selectionStart : null;
-  app.innerHTML = `<div class="room-top"><div><span class="eyebrow">${room.phase==='lobby'?'МЕСТО ВСТРЕЧИ':'СЛОВА-МИНЫ · ИГРА ИДЁТ'}</span><h1>${room.phase==='lobby'?'Свои люди — в сборе.':room.phase==='finished'?'Вот это была игра!':room.phase==='paused'?'Ждём ещё игроков':`Ход ${Math.min(room.turn+1,room.totalTurns)} <span class="muted">/ ${room.totalTurns}</span>`}</h1></div><div class="room-actions"><button class="secondary" id="invite-button">Пригласить друзей ↗</button><span class="room-code">${esc(room.code)}</span></div></div>
+  app.innerHTML = `<div class="room-top"><div><span class="eyebrow">${room.phase==='lobby'?'МЕСТО ВСТРЕЧИ':'WORD MINE · ИГРА ИДЁТ'}</span><h1>${room.phase==='lobby'?'Свои люди — в сборе.':room.phase==='finished'?'Вот это была игра!':room.phase==='paused'?'Ждём ещё игроков':`Ход ${Math.min(room.turn+1,room.totalTurns)} <span class="muted">/ ${room.totalTurns}</span>`}</h1></div><div class="room-actions"><button class="secondary" id="invite-button">Пригласить друзей ↗</button><span class="room-code">${esc(room.code)}</span></div></div>
   <div class="connection" id="connection" ${connected?'hidden':''}>Связь прервалась. Переподключаемся… Действия будут доступны после подключения.</div><div class="room-layout"><aside class="panel sidebar"><div class="roster-title"><h2>Компания</h2><span class="count-pill">${room.players.length} / ${room.settings.capacity ?? '∞'}</span></div><div class="roster">${roster()}</div><p class="sidebar-note">Общайтесь вживую или в своём видеозвонке. Секретные слова и мины каждый видит на своём экране.</p><button class="text-button" id="leave-button">Выйти из комнаты ↗</button></aside><div class="room-main">${room.phase==='lobby'?lobby():room.phase==='finished'?finished():room.phase==='paused'?paused():game()}</div></div>`;
   $('#invite-button').onclick = copyInvite;
   $('#leave-button').onclick = () => confirmAction('Выйти из комнаты?', room.phase==='lobby'?'Вы сможете зайти снова по ссылке.':'Очки и очередь остальных игроков сохранятся. Если нужно, текущий ход начнётся заново или игра подождёт новых участников.', 'Выйти', () => mutate('leave'));
@@ -174,10 +181,10 @@ function confirmAction(title,message,label,callback) {
 }
 async function copyInvite() {
   const link=`${location.origin}/?room=${room.code}`;
-  try { await navigator.clipboard.writeText(link); toast('Ссылка скопирована. Пароль для друзей — ACM.'); }
-  catch { const d=document.createElement('dialog');d.className='dialog';d.innerHTML=`<h2>Пригласи друзей</h2><p class="confirmation-text">Скопируй ссылку и передай пароль ACM.</p><input readonly aria-label="Ссылка на комнату" value="${esc(link)}"><button class="secondary full" style="margin-top:18px">Готово</button>`;document.body.append(d);d.showModal();d.querySelector('input').select();d.querySelector('button').onclick=()=>d.close();d.onclose=()=>d.remove(); }
+  try { await navigator.clipboard.writeText(link); toast('Ссылка скопирована. Отправь её друзьям.'); }
+  catch { const d=document.createElement('dialog');d.className='dialog';d.innerHTML=`<h2>Пригласи друзей</h2><p class="confirmation-text">Скопируй ссылку. Для входа нужны только код комнаты и ник.</p><input readonly aria-label="Ссылка на комнату" value="${esc(link)}"><button class="secondary full" style="margin-top:18px">Готово</button>`;document.body.append(d);d.showModal();d.querySelector('input').select();d.querySelector('button').onclick=()=>d.close();d.onclose=()=>d.remove(); }
 }
-function clearSession(){session=null;try{sessionStorage.removeItem('acm-session');}catch{}}
+function clearSession(){session=null;try{sessionStorage.removeItem('word-mine-session');sessionStorage.removeItem('acm-session');}catch{}}
 function lostRoom(message){clearSession();room=null;signature='';entry();toast(message);}
 async function poll() {
   if(!session||busy||polling||document.hidden) return; polling=true;

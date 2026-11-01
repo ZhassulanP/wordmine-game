@@ -6,3 +6,5 @@ outputs/
 .DS_Store
 .openai/*.local.*
 .vercel
+.wrangler/
+.dev.vars*

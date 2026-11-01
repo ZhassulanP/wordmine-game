@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { act, checkPassword, createRoom, joinRoom, newPlayer, settings, tick, view } from '../src/game.js';
+import { act, createRoom, joinRoom, newPlayer, settings, tick, view } from '../src/game.js';
 import { api } from '../src/api.js';
 
 function setup(count=3, options={}) {
@@ -16,10 +16,6 @@ function begin(room,now=1000) {
 function mine(room,now=1001) {
   room.players.slice(2).forEach((p,i)=>act(room,p.token,'mine',{word:i===0?'ловушка':'опасность'},now));
 }
-test('fixed password is validated server-side',()=>{
-  checkPassword('ACM');checkPassword('acm');
-  for(const password of ['','wrong','ACM ',null,{},123]) assert.throws(()=>checkPassword(password),/пароль/);
-});
 test('more than ten players, custom capacity and uncapped rooms',()=>{
   const r=setup(35);assert.equal(r.players.length,35);assert.equal(r.settings.capacity,null);
   const capped=setup(12,{capacity:12});
@@ -159,33 +155,35 @@ async function call(store,path,data,token) {
   const response=await api(new Request('http://localhost'+path,{method:data?'POST':'GET',headers:{...(token&&{Authorization:`Bearer ${token}`})},...(data&&{body:JSON.stringify(data)})}),store);
   return {status:response.status,...await response.json()};
 }
-test('API rejects bad password and unauthenticated state access',async()=>{
+test('API supports code-only joins while requiring a session for state access',async()=>{
   const store=memoryStore();
-  assert.equal((await call(store,'/api/rooms',{name:'Host',password:'bad'})).status,403);
-  const created=await call(store,'/api/rooms',{name:'Host',password:'ACM'});
+  assert.equal((await call(store,'/api/rooms',{name:''})).status,400);
+  const created=await call(store,'/api/rooms',{name:'Host'});
   assert.equal(created.status,201);
   assert.match(created.room.code,/^[0-9]{4}$/);
   assert.equal((await call(store,`/api/rooms/${created.room.code}`)).status,401);
-  assert.equal((await call(store,`/api/rooms/${created.room.code}/join`,{name:'Guest',password:'bad'})).status,403);
+  const guest=await call(store,`/api/rooms/${created.room.code}/join`,{name:'Guest'});
+  assert.equal(guest.status,200);
+  assert.equal((await call(store,`/api/rooms/${created.room.code}`,null,guest.token)).room.players.length,2);
   assert.equal((await call(store,`/api/rooms/${created.room.code}`,null,created.token)).room.me,created.room.me);
   assert.equal((await call(store,`/api/rooms/${created.room.code}/action`,{action:'leave'},created.token)).left,true);
 });
 test('four-digit codes preserve leading zeros and retry collisions without overwriting rooms',async()=>{
   const store=memoryStore();
   const seeded=createRoom('0275',newPlayer('Host','original-token'),{},Date.now());await store.create(seeded);
-  const joined=await call(store,'/api/rooms/0275/join',{name:'Guest',password:'ACM'});
+  const joined=await call(store,'/api/rooms/0275/join',{name:'Guest'});
   assert.equal(joined.status,200);assert.equal(joined.room.code,'0275');
   let attempts=0;
   const colliding={...store,async create(room){assert.match(room.code,/^[0-9]{4}$/);return ++attempts<=5?false:store.create(room);}};
-  const created=await call(colliding,'/api/rooms',{name:'New Host',password:'ACM'});
+  const created=await call(colliding,'/api/rooms',{name:'New Host'});
   assert.equal(created.status,201);assert.equal(attempts,6);assert.match(created.room.code,/^[0-9]{4}$/);
   assert.equal((await call(store,'/api/rooms/0275',null,'original-token')).room.players.length,2);
   for(const invalid of ['123','12345','12a4'])assert.equal((await call(store,`/api/rooms/${invalid}`)).status,404);
 });
 test('concurrent API joins and mine submissions are not lost',async()=>{
-  const store=memoryStore(),created=await call(store,'/api/rooms',{name:'Host',password:'acm'});
+  const store=memoryStore(),created=await call(store,'/api/rooms',{name:'Host'});
   const base=`/api/rooms/${created.room.code}`;
-  const joins=await Promise.all(Array.from({length:12},(_,i)=>call(store,base+'/join',{name:'Guest '+i,password:'ACM'})));
+  const joins=await Promise.all(Array.from({length:12},(_,i)=>call(store,base+'/join',{name:'Guest '+i})));
   assert.ok(joins.every(j=>j.status===200));
   const tokens=[created.token,...joins.map(j=>j.token)];
   await Promise.all(tokens.map(token=>call(store,base+'/action',{action:'ready'},token)));

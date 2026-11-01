@@ -5,7 +5,11 @@ import { createPostgresStore } from '../src/postgres-store.js';
 import { api } from '../src/api.js';
 import { createRoom, newPlayer } from '../src/game.js';
 
-test('Postgres persists across handlers and preserves concurrent multiplayer updates', { skip: !process.env.DATABASE_URL, timeout: 120000 }, async () => {
+test('Postgres persists across handlers and preserves concurrent multiplayer updates', { skip: !process.env.DATABASE_URL, timeout: 120000 }, async context => {
+  // Database/network latency must not consume the game's mining window.
+  // Deadline behavior is checked separately with explicit clocks in game.test.js.
+  const gameTime = Date.now();
+  context.mock.method(Date, 'now', () => gameTime);
   const connection = process.env.DATABASE_URL;
   const sql = neon(connection);
   let code;
@@ -21,11 +25,11 @@ test('Postgres persists across handlers and preserves concurrent multiplayer upd
     return result;
   };
   try {
-    const host = await call('/api/rooms', { name: 'Postgres smoke host', password: 'ACM', settings: { capacity: 20 } });
+    const host = await call('/api/rooms', { name: 'Postgres smoke host', settings: { capacity: 20 } });
     code = host.room.code;
     assert.match(code, /^[0-9]{4}$/);
     const base = '/api/rooms/' + code;
-    const guests = await Promise.all(Array.from({ length: 12 }, (_, i) => call(base + '/join', { name: 'Postgres guest ' + i, password: 'acm' })));
+    const guests = await Promise.all(Array.from({ length: 12 }, (_, i) => call(base + '/join', { name: 'Postgres guest ' + i })));
     const clients = [host, ...guests];
     const state = await call(base, null, host.token);
     assert.equal(state.room.players.length, 13);
@@ -36,7 +40,7 @@ test('Postgres persists across handlers and preserves concurrent multiplayer upd
     assert.equal(started.room.round.deadline - started.room.serverNow, 60000);
     const miners = clients.filter(client => ![started.room.round.explainerId, started.room.round.guesserId].includes(client.room.me));
     const [late] = await Promise.all([
-      call(base + '/join', { name: 'Live joiner', password: 'acm' }),
+      call(base + '/join', { name: 'Live joiner' }),
       call(base + '/action', { action: 'kick', data: { playerId: miners[1].room.me } }, host.token),
       call(base + '/action', { action: 'mine', data: { word: 'ловушка', roundId: started.room.round.id } }, miners[0].token)
     ]);
@@ -62,7 +66,7 @@ test('Postgres persists across handlers and preserves concurrent multiplayer upd
     assert.equal(result.room.players[1].score, 1);
     assert.equal(result.room.players[0].turnsExplained, 1);
     assert.equal(result.room.players[1].turnsGuessed, 1);
-    const recovered = await call(base + '/join', { name: 'POSTGRES SMOKE HOST', password: 'acm' });
+    const recovered = await call(base + '/join', { name: 'POSTGRES SMOKE HOST' });
     assert.equal(recovered.rejoined, true); assert.equal(recovered.room.me, host.room.me);
     assert.equal(recovered.room.players.length, 13); assert.equal(recovered.room.players[0].score, 1);
     assert.equal(recovered.room.players[0].turnsExplained, 1);

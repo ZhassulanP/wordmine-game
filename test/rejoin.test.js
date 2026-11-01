@@ -103,12 +103,11 @@ async function call(store, path, data, token) {
   const response = await api(new Request('https://game.test' + path, { method: data ? 'POST' : 'GET', headers: token ? { Authorization: `Bearer ${token}` } : {}, ...(data && { body: JSON.stringify(data) }) }), store);
   return { status: response.status, ...await response.json() };
 }
-test('API recovery requires the password and returns a fresh token for the same player', async () => {
-  const store = memoryStore(), original = await call(store, '/api/rooms', { name: 'Host', password: 'ACM' });
+test('API recovery uses only the nickname and returns a fresh token for the same player', async () => {
+  const store = memoryStore(), original = await call(store, '/api/rooms', { name: 'Host' });
   const base = '/api/rooms/' + original.room.code;
-  assert.equal((await call(store, base + '/join', { name: 'HOST', password: 'wrong' })).status, 403);
   assert.equal((await call(store, base, null, original.token)).status, 200);
-  const recovered = await call(store, base + '/join', { name: 'HOST', password: 'acm' });
+  const recovered = await call(store, base + '/join', { name: 'HOST' });
   assert.equal(recovered.status, 200); assert.equal(recovered.rejoined, true);
   assert.equal(recovered.room.me, original.room.me); assert.notEqual(recovered.token, original.token);
   assert.equal(recovered.room.players.length, 1);
@@ -116,17 +115,17 @@ test('API recovery requires the password and returns a fresh token for the same 
   assert.equal((await call(store, base, null, recovered.token)).status, 200);
 });
 test('all players may leave and rejoin the empty room with the same nicknames', async () => {
-  const store = memoryStore(), host = await call(store, '/api/rooms', { name: 'Host', password: 'ACM' });
+  const store = memoryStore(), host = await call(store, '/api/rooms', { name: 'Host' });
   const base = '/api/rooms/' + host.room.code;
   await call(store, base + '/action', { action: 'leave' }, host.token);
-  const restored = await call(store, base + '/join', { name: 'host', password: 'ACM' });
+  const restored = await call(store, base + '/join', { name: 'host' });
   assert.equal(restored.status, 200); assert.equal(restored.rejoined, true); assert.equal(restored.room.me, host.room.me);
   assert.equal(restored.room.hostId, host.room.me); assert.equal(restored.room.players.length, 1);
 });
 test('concurrent same-nickname reconnects never create a duplicate player', async () => {
-  const store = memoryStore(), host = await call(store, '/api/rooms', { name: 'Host', password: 'ACM' });
+  const store = memoryStore(), host = await call(store, '/api/rooms', { name: 'Host' });
   const base = '/api/rooms/' + host.room.code;
-  const reconnects = await Promise.all(Array.from({ length: 8 }, () => call(store, base + '/join', { name: 'HOST', password: 'acm' })));
+  const reconnects = await Promise.all(Array.from({ length: 8 }, () => call(store, base + '/join', { name: 'HOST' })));
   assert.ok(reconnects.every(r => r.status === 200 && r.rejoined && r.room.me === host.room.me));
   const final = await store.get(host.room.code); assert.equal(final.room.players.length, 1);
   assert.equal(final.room.players[0].id, host.room.me);

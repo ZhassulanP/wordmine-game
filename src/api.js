@@ -1,4 +1,4 @@
-import { GameError, checkPassword, newPlayer, createRoom, joinRoom, act, tick, view } from './game.js';
+import { GameError, newPlayer, createRoom, joinRoom, act, tick, view } from './game.js';
 
 const json = (data, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 const roomCode = () => String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, '0');
@@ -16,7 +16,6 @@ export async function api(request, store) {
       if (!data || typeof data !== 'object' || Array.isArray(data)) throw new GameError('Неверный формат запроса.');
     }
     if (url.pathname === '/api/rooms' && request.method === 'POST') {
-      checkPassword(data.password);
       const auth = crypto.randomUUID() + crypto.randomUUID();
       const p = newPlayer(data.name, auth);
       for (let i = 0; i < 100; i++) {
@@ -32,7 +31,6 @@ export async function api(request, store) {
     if (request.method !== (route ? 'POST' : 'GET')) throw new GameError('Метод не поддерживается.', 405);
     let joinedPlayer;
     if (route === 'join') {
-      checkPassword(data.password);
       joinedPlayer = newPlayer(data.name, crypto.randomUUID() + crypto.randomUUID());
     }
     // Compare-and-swap retries preserve simultaneous joins, mines and score updates.

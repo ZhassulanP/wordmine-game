@@ -1,5 +1,5 @@
 {
-  "name": "slova-miny-acm",
+  "name": "wordmine-game",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -11,10 +11,20 @@
     "start": "node src/server.js",
     "build": "node scripts/build.mjs",
     "build:vercel": "node scripts/build-vercel.mjs",
+    "cloudflare:login": "wrangler login",
+    "cloudflare:dev": "wrangler dev",
+    "cloudflare:check": "npm run build && node scripts/verify-cloudflare.mjs && wrangler deploy --dry-run --outdir dist/cloudflare-check",
+    "cloudflare:db:local": "wrangler d1 migrations apply DB --local",
+    "cloudflare:db:remote": "wrangler d1 migrations apply DB --remote",
+    "cloudflare:deploy": "wrangler deploy",
     "db:migrate": "node scripts/migrate-postgres.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "cloudflare:db:create": "wrangler d1 create word-mine-rooms --binding DB --update-config"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.156.0"
   }
 }

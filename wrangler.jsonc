@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "word-mine",
+  "main": "dist/server/index.js",
+  "compatibility_date": "2026-11-02",
+  "workers_dev": true,
+  "build": {
+    "command": "npm run build"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "word-mine-rooms",
+      // Wrangler fills database_id when this resource is provisioned.
+      "migrations_dir": "drizzle"
+    }
+  ]
+}
