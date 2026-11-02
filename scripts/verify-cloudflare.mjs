@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
+import { mock } from 'node:test';
+let gameTime = Date.now();
+mock.method(Date, 'now', () => gameTime);
 
 // Exercise the actual deployment artifact against SQLite with the D1 interface.
 const source = await readFile(new URL('../dist/server/index.js', import.meta.url), 'utf8');
@@ -40,6 +43,12 @@ try {
   const started = await request(base + '/action', { action: 'start' }, host.token);
   assert.equal(started.room.round.deadline - started.room.serverNow, 60000);
   await request(base + '/action', { action: 'mine', data: { word: 'два  слова' } }, miner.token);
+  const placed = await request(base, null, miner.token);
+  assert.equal(placed.room.phase, 'mining');
+  const replaced = await request(base + '/action', { action: 'mine', data: { word: 'новая мина' } }, miner.token);
+  assert.equal(replaced.room.round.myMine, 'новая мина');
+  assert.equal(replaced.room.round.deadline, started.room.round.deadline);
+  gameTime = started.room.round.deadline;
   const hidden = await request(base, null, guesser.token);
   assert.equal(hidden.room.round.word, null); assert.equal(hidden.room.round.mines, null);
   assert.equal(hidden.room.round.deadline, null);
@@ -54,4 +63,4 @@ try {
   assert.equal(returned.room.me, host.room.me); assert.equal(returned.room.hostId, host.room.me);
   assert.equal(returned.room.players[0].score, 1);
   console.log('Cloudflare artifact verified: password-free rooms, D1 queries, roles, mines, answers, scores and nickname recovery.');
-} finally { db.close(); }
+} finally { db.close(); mock.restoreAll(); }

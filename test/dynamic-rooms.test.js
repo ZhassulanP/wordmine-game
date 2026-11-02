@@ -15,6 +15,7 @@ function complete(room, now = 2000) {
   if (room.phase === 'mining') {
     for (const p of miners(room)) if (!room.round.mines[p.id]) act(room, p.token, 'mine', { word: 'ловушка' }, now);
   }
+  tick(room, room.round.deadline);
   assert.equal(room.phase, 'explaining');
   assert.ok(room.players.some(p => p.id === room.round.explainerId));
   assert.ok(room.players.some(p => p.id === room.round.guesserId));
@@ -56,6 +57,7 @@ test('joins during guessing or a claim never restart the turn or become the curr
   for (const phase of ['explaining', 'claim', 'result']) {
     const room = setup();
     for (const p of miners(room)) act(room, p.token, 'mine', { word: 'ловушка' }, 1001);
+    tick(room, room.round.deadline);
     if (phase === 'claim') act(room, miners(room)[0].token, 'claim', {}, 1002);
     if (phase === 'result') act(room, 'host', 'guessed', {}, 1002);
     const roundId = room.round.id, score = room.players[0].score;
@@ -68,17 +70,18 @@ test('joins during guessing or a claim never restart the turn or become the curr
     finishGame(room);
   }
 });
-test('kicking an unsubmitted miner continues when the remaining mines are ready', () => {
+test('kicking an unsubmitted miner preserves the full mining window', () => {
   const room = setup(); const [a, b] = miners(room); const roundId = room.round.id;
   act(room, a.token, 'mine', { word: 'ловушка' }, 1001);
   act(room, 'host', 'kick', { playerId: b.id }, 1002);
-  assert.equal(room.round.id, roundId); assert.equal(room.phase, 'explaining');
+  assert.equal(room.round.id, roundId); assert.equal(room.phase, 'mining');
   assert.deepEqual(room.round.mines, { [a.id]: 'ловушка' });
   assert.throws(() => view(room, b.token)); finishGame(room);
 });
 test('removing a miner deletes their mine and clears their pending claim', () => {
   const room = setup(5); const [a, b] = miners(room);
   for (const p of miners(room)) act(room, p.token, 'mine', { word: 'ловушка' }, 1001);
+  tick(room, room.round.deadline);
   act(room, a.token, 'claim', {}, 1002); const roundId = room.round.id;
   act(room, 'host', 'kick', { playerId: a.id }, 1003);
   assert.equal(room.phase, 'explaining'); assert.equal(room.round.id, roundId);
@@ -90,6 +93,7 @@ test('removing either active player restarts with a fresh word and preserves sco
   for (const role of ['explainerId', 'guesserId']) for (const phase of ['mining', 'explaining', 'claim']) {
     const room = setup(5, 2); complete(room);
     if (phase !== 'mining') for (const p of miners(room)) act(room, p.token, 'mine', { word: 'ловушка' }, 2100);
+    if (phase !== 'mining') tick(room, room.round.deadline);
     if (phase === 'claim') act(room, miners(room)[0].token, 'claim', {}, 2101);
     const old = structuredClone(room.round), progress = structuredClone(room.progress);
     const scores = Object.fromEntries(room.players.map(p => [p.id, p.score]));
@@ -123,6 +127,7 @@ test('below three players pauses, then joining resumes with preserved scores', (
 });
 test('pausing on a completed result counts that turn only once', () => {
   const room = setup(3); for (const p of miners(room)) act(room, p.token, 'mine', { word: 'ловушка' }, 1001);
+    tick(room, room.round.deadline);
   act(room, 'host', 'guessed', {}, 1002);
   const departing = room.players.find(p => p.id !== room.hostId && p.id !== room.round.guesserId);
   act(room, departing.token, 'leave', {}, 1003);
@@ -133,6 +138,7 @@ test('a late player still gets both roles even when all other quotas are complet
   const room = setup(3);
   while (room.schedule.length) complete(room);
   for (const p of miners(room)) act(room, p.token, 'mine', { word: 'ловушка' }, 4000);
+  tick(room, room.round.deadline);
   act(room, 'host', 'guessed', {}, 4001);
   assert.ok(room.players.every(p => room.progress[p.id].explained >= 1 && room.progress[p.id].guessed >= 1));
   joinRoom(room, newPlayer('Very late', 'late'), 4002);

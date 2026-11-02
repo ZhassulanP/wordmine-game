@@ -8,7 +8,7 @@ import { createRoom, newPlayer } from '../src/game.js';
 test('Postgres persists across handlers and preserves concurrent multiplayer updates', { skip: !process.env.DATABASE_URL, timeout: 120000 }, async context => {
   // Database/network latency must not consume the game's mining window.
   // Deadline behavior is checked separately with explicit clocks in game.test.js.
-  const gameTime = Date.now();
+  let gameTime = Date.now();
   context.mock.method(Date, 'now', () => gameTime);
   const connection = process.env.DATABASE_URL;
   const sql = neon(connection);
@@ -52,6 +52,7 @@ test('Postgres persists across handlers and preserves concurrent multiplayer upd
     const pending = clients.filter(c => dynamic.room.players.some(p => p.id === c.room.me) &&
       ![started.room.round.explainerId, started.room.round.guesserId, miners[0].room.me].includes(c.room.me));
     await Promise.all(pending.map(c => call(base + '/action', { action: 'mine', data: { word: 'ловушка', roundId: started.room.round.id } }, c.token)));
+    gameTime = started.room.round.deadline;
     const guesserToken = clients.find(client => client.room.me === started.room.round.guesserId).token;
     const guesser = await call(base, null, guesserToken);
     assert.equal(guesser.room.round.word, null);

@@ -11,6 +11,7 @@ function setup(count = 4, capacity = count) {
 }
 function finishTurn(room) {
   for (const p of room.players) if (![room.round.explainerId, room.round.guesserId].includes(p.id)) act(room, p.token, 'mine', { word: 'ловушка' }, 1001);
+  tick(room, room.round.deadline);
   act(room, 'host', 'guessed', {}, 1002);
 }
 test('same nickname reconnects in a full room without changing identity, role or schedule', () => {

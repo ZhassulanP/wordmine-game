@@ -98,27 +98,44 @@ function ensureState(room) {
     room.round.names = Object.fromEntries(room.players.map(p => [p.id, p.name]));
     changed = true;
   }
+  if (room.round && room.round.redrawLocked == null) {
+    room.round.redrawLocked = Object.keys(room.round.mines).length > 0;
+    changed = true;
+  }
   if (changed && !['lobby', 'finished'].includes(room.phase)) rebuildSchedule(room);
   return changed;
+}
+function dictionary(room) {
+  return [...(room.settings.useDefaultWords ? WORDS : []), ...room.settings.customWords];
+}
+function hasAlternative(room, word) {
+  return dictionary(room).some(w => normalize(w) !== normalize(word));
+}
+function drawWord(room, avoidWord) {
+  let words = dictionary(room);
+  const alternatives = words.filter(w => normalize(w) !== normalize(avoidWord));
+  if (alternatives.length) words = alternatives;
+  let available = words.filter(w => !room.used.includes(w));
+  if (!available.length) { room.used = []; available = words; }
+  const word = available[crypto.getRandomValues(new Uint32Array(1))[0] % available.length];
+  room.used.push(word);
+  return word;
+}
+function startRound(room, pair, now, avoidWord) {
+  room.round = {
+    id: crypto.randomUUID(), names: Object.fromEntries(room.players.map(p => [p.id, p.name])),
+    word: drawWord(room, avoidWord), ...pair,
+    mines: {}, redrawLocked: false, deadline: now + 60000,
+    claim: null, result: null, lastGuess: ''
+  };
+  room.phase = 'mining';
 }
 function startTurn(room, now) {
   if (room.players.length < 3) { room.phase = 'paused'; room.round = null; return; }
   const pair = room.schedule.shift();
   if (!pair) { room.phase = 'finished'; room.round = null; return; }
-  const words = [...(room.settings.useDefaultWords ? WORDS : []), ...room.settings.customWords];
-  let available = words.filter(w => !room.used.includes(w));
-  if (!available.length) { room.used = []; available = words; }
-  if (room.avoidWord && available.some(w => w !== room.avoidWord)) available = available.filter(w => w !== room.avoidWord);
-  const word = available[crypto.getRandomValues(new Uint32Array(1))[0] % available.length];
+  startRound(room, pair, now, room.avoidWord);
   delete room.avoidWord;
-  room.used.push(word);
-  room.round = {
-    id: crypto.randomUUID(), names: Object.fromEntries(room.players.map(p => [p.id, p.name])),
-    word, ...pair,
-    mines: {}, deadline: now + 60000,
-    claim: null, result: null, lastGuess: ''
-  };
-  room.phase = 'mining';
 }
 function startExplaining(room) {
   room.phase = 'explaining';
@@ -151,7 +168,7 @@ export function act(room, token, action, data = {}, now = Date.now()) {
   const host = p.id === room.hostId;
   const onlyHost = () => requireThat(host, 'Это действие доступно ведущему.', 403);
   tick(room, now);
-  if (['mine', 'guess', 'guessed', 'claim', 'resolve', 'skip', 'next'].includes(action) && data.roundId != null) {
+  if ((['mine', 'guess', 'guessed', 'claim', 'resolve', 'skip', 'next'].includes(action) && data.roundId != null) || action === 'redraw') {
     requireThat(data.roundId === room.round?.id, 'Этот ход уже сменился. Дождитесь обновления экрана.', 409);
   }
   if (action === 'ready') {
@@ -168,15 +185,21 @@ export function act(room, token, action, data = {}, now = Date.now()) {
     room.progress = Object.fromEntries(room.players.map(p => [p.id, { explained: 0, guessed: 0 }]));
     room.round = null; room.used = []; rebuildSchedule(room);
     startTurn(room, now);
+  } else if (action === 'redraw') {
+    requireThat(room.phase === 'mining', 'Сменить слово можно только до установки мин.');
+    const r = room.round;
+    requireThat(p.id === r.explainerId, 'Сменить слово может только объясняющий.', 403);
+    requireThat(!r.redrawLocked && Object.keys(r.mines).length === 0, 'Первая мина уже установлена. Сменить слово нельзя.');
+    requireThat(hasAlternative(room, r.word), 'В словаре нет другого слова.');
+    startRound(room, { explainerId: r.explainerId, guesserId: r.guesserId }, now, r.word);
   } else if (action === 'mine') {
     requireThat(room.phase === 'mining', 'Минирование уже завершено.');
     requireThat(p.id !== room.round.explainerId && p.id !== room.round.guesserId, 'Мины устанавливают только минёры.', 403);
     const word = String(data.word || '').trim();
     requireThat(word.length >= 1 && word.length <= 20, 'Мина — от 1 до 20 символов, включая пробелы.');
     requireThat(normalize(word) !== normalize(room.round.word), 'Секретное слово не может быть миной.');
-    requireThat(!room.round.mines[p.id], 'Ваша мина уже установлена.');
     room.round.mines[p.id] = word;
-    if (Object.keys(room.round.mines).length === room.players.length - 2) startExplaining(room);
+    room.round.redrawLocked = true;
   } else if (action === 'guess') {
     requireThat(room.phase === 'explaining', 'Сейчас нельзя отправить ответ.');
     requireThat(p.id === room.round.guesserId, 'Ответ отправляет угадывающий.', 403);
@@ -235,7 +258,6 @@ export function act(room, token, action, data = {}, now = Date.now()) {
         } else {
           delete room.round.mines[id];
           if (room.round.claim?.playerId === id) { room.round.claim = null; startExplaining(room); }
-          if (room.phase === 'mining' && Object.keys(room.round.mines).length === room.players.length - 2) startExplaining(room);
         }
       }
       rebuildSchedule(room);
@@ -262,6 +284,7 @@ export function view(room, token, now = Date.now()) {
     turn: room.turn, totalTurns: room.totalTurns, serverNow: now,
     round: r && { id: r.id, names: r.names, role, explainerId: r.explainerId, guesserId: r.guesserId,
       word: role !== 'guesser' || reveal ? r.word : null,
+      canRedraw: role === 'explainer' && room.phase === 'mining' && !r.redrawLocked && Object.keys(r.mines).length === 0 && hasAlternative(room, r.word),
       mineCount: Object.keys(r.mines).length, myMine: r.mines[p.id] || null,
       mines: reveal || role === 'miner' ? r.mines : null, deadline: r.deadline,
       claim: r.claim && { playerId: r.claim.playerId, word: r.claim.word }, result: r.result, lastGuess: r.lastGuess }
