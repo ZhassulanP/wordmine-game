@@ -7,7 +7,7 @@ await mkdir(new URL('dist/.openai/', root), { recursive: true });
 const modules = await Promise.all(['src/words.js', 'src/game.js', 'src/api.js'].map(read));
 const core = modules.map(source => source.replace(/^import .*;\n/gm, '').replace(/^export /gm, '')).join('\n');
 const assets = {};
-for (const [path, name, type] of [['/', 'index.html', 'text/html; charset=utf-8'], ['/app.js', 'app.js', 'text/javascript; charset=utf-8'], ['/style.css', 'style.css', 'text/css; charset=utf-8'], ['/favicon.svg', 'favicon.svg', 'image/svg+xml']]) assets[path] = { body: await read('public/' + name), type };
+for (const [path, name, type] of [['/', 'index.html', 'text/html; charset=utf-8'], ['/app.js', 'app.js', 'text/javascript; charset=utf-8'], ['/theme.js', 'theme.js', 'text/javascript; charset=utf-8'], ['/style.css', 'style.css', 'text/css; charset=utf-8'], ['/favicon.svg', 'favicon.svg', 'image/svg+xml']]) assets[path] = { body: await read('public/' + name), type };
 const worker = `${core}\nconst assets = ${JSON.stringify(assets)};\n
 export default {
   async fetch(request, env) {

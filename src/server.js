@@ -18,7 +18,7 @@ const store = {
 };
 const clean = setInterval(() => db.prepare('DELETE FROM rooms WHERE updated < ?').run(Date.now() - 7 * 86400000), 3600000);
 clean.unref();
-const types = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/style.css': ['style.css', 'text/css; charset=utf-8'], '/favicon.svg': ['favicon.svg', 'image/svg+xml'] };
+const types = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/theme.js': ['theme.js', 'text/javascript; charset=utf-8'], '/style.css': ['style.css', 'text/css; charset=utf-8'], '/favicon.svg': ['favicon.svg', 'image/svg+xml'] };
 const port = Number(process.env.PORT || 3000);
 const server = createServer(async (req, res) => {
   try {

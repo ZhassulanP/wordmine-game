@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#15151b">
-  <meta name="description" content="Word Mine для своей компании. Объясняйте слова, ставьте ловушки и играйте без лимита в 10 человек.">
+  <meta name="theme-color" content="#f6f4eb">
+  <meta name="description" content="Word Mine — словесная игра с подвохом для компании от 3 человек. Объясняйте слова, ставьте ловушки и ловите ассоциации.">
   <title>Word Mine</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <script src="/theme.js"></script>
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.js"></script>
 </head>
 <body>
   <header class="header wrap">
     <a class="brand" href="/" aria-label="Word Mine — главная"><img src="/favicon.svg" alt="" width="36" height="36"><span>Word <span class="brand-light">Mine</span><small>ИГРА ДЛЯ КОМПАНИИ</small></span></a>
-    <div class="header-right"><span class="private-note"><i></i> Для своей компании</span><button class="text-button" id="rules-button">Как играть <span>↗</span></button></div>
+    <div class="header-right"><span class="private-note"><i></i> Вечер в хорошей компании</span><button class="text-button" id="rules-button">Как играть <span>↗</span></button><button class="theme-toggle" id="theme-toggle" type="button" aria-label="Тёмная тема" aria-pressed="false" title="Включить тёмную тему"><svg class="theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button></div>
   </header>
   <main id="app" class="wrap"><p class="loading">Собираем компанию…</p></main>
   <footer class="footer wrap"><span>Хорошая компания. Опасные ассоциации.</span><span>Word Mine <span class="footer-star">✳</span></span></footer>
