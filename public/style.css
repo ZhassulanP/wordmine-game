@@ -266,7 +266,10 @@ h3 { font-size: 18px; letter-spacing: -.4px; }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .fixed-setting { padding: 14px 15px; border: 1px dashed var(--input-border); border-radius: 11px; color: var(--muted); font-size: 14px; min-height: 51px; background: var(--input-bg); }
 /* Entry tabs update without replaying a page entrance animation. */
-.language-switch { width: 76px; min-height: 44px; padding: 10px 9px; border-radius: 12px; background: var(--panel); color: var(--text); font-size: 12px; font-weight: 600; }
+.language-switch { display: inline-flex; flex-shrink: 0; gap: 2px; padding: 3px; border: 1px solid var(--border-soft); border-radius: 12px; background: var(--surface-muted); }
+.language-button { min-width: 40px; min-height: 44px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; }
+.language-button:hover { background: var(--surface-hover); color: var(--text); }
+.language-button[aria-pressed="true"] { background: var(--button-bg); color: var(--button-text); }
 .scoreboard { margin: 28px 0; }
 .scoreboard caption { text-align: left; font-size: 18px; font-weight: 700; color: var(--text); padding-bottom: 16px; }
 .scoreboard table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; table-layout: fixed; }
@@ -301,7 +304,6 @@ h3 { font-size: 18px; letter-spacing: -.4px; }
   .brand img { width: 37px; height: 37px; }
   .header-right { gap: 6px; margin-left: auto; }
   .header .text-button { font-size: 11px; padding: 10px 12px; }
-  .language-switch { width: 66px; padding: 10px 7px; }
   .header .text-button span { margin-left: 6px; }
   .hero { grid-template-columns: minmax(0, 1fr); gap: 29px; padding: 37px 0 38px; }
   .hero-copy { max-width: 520px; width: 100%; margin: auto; }
@@ -354,10 +356,6 @@ h3 { font-size: 18px; letter-spacing: -.4px; }
   .game-head { gap: 8px; }
   .role-pill { padding: 8px 10px; font-size: 10px; }
   .timer { font-size: 24px; }
-}
-@media (max-width: 340px) {
-  .brand > span { display: none; }
-  .header { flex-wrap: nowrap; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

@@ -27,8 +27,10 @@ function localizeShell() {
   document.documentElement.lang = getLanguage();
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   $('.brand').setAttribute('aria-label', t('home'));
-  $('#language-switch').value = getLanguage();
   $('#language-switch').setAttribute('aria-label', t('language'));
+  document.querySelectorAll('[data-language]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.language === getLanguage()));
+  });
   $('#close-rules').setAttribute('aria-label', t('close'));
   const theme = $('#theme-toggle');
   theme.setAttribute('aria-label', t('darkTheme'));
@@ -40,12 +42,15 @@ function localizeShell() {
 function captureEntry() {
   $('#entry-form')?.querySelectorAll('input').forEach(input => entryDrafts.set(input.id, input.value));
 }
-$('#language-switch').onchange = e => {
-  captureEntry();
-  setLanguage(e.target.value);
-  localizeShell();
-  if (room) renderRoom(); else entry();
-};
+document.querySelectorAll('[data-language]').forEach(button => {
+  button.onclick = () => {
+    if (button.dataset.language === getLanguage()) return;
+    captureEntry();
+    setLanguage(button.dataset.language);
+    localizeShell();
+    if (room) renderRoom(); else entry();
+  };
+});
 localizeShell();
 function toast(message) {
   $('#toast').textContent = message; $('#toast').hidden = false;
