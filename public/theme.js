@@ -14,14 +14,15 @@
   function applyTheme() {
     const theme = preference || (systemTheme.matches ? 'dark' : 'light');
     document.documentElement.dataset.theme = theme;
-    document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#171f1b' : '#f6f4eb';
+    document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#09150f' : '#f6f4eb';
     const toggle = document.getElementById('theme-toggle');
     if (toggle) {
       toggle.setAttribute('aria-pressed', String(theme === 'dark'));
-      toggle.title = theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему';
+      toggle.title = theme === 'dark' ? (toggle.dataset.lightTitle || 'Включить светлую тему') : (toggle.dataset.darkTitle || 'Включить тёмную тему');
     }
   }
 
+  window.addEventListener('wordmine:theme-labels', applyTheme);
   applyTheme();
   systemTheme.addEventListener('change', () => { if (!preference) applyTheme(); });
   window.addEventListener('storage', event => {

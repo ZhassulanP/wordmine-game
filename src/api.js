@@ -1,7 +1,7 @@
 import { GameError, newPlayer, createRoom, joinRoom, act, tick, view } from './game.js';
 
 const json = (data, status = 200) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
-const roomCode = () => String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, '0');
+const roomCode = () => String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
 export async function api(request, store) {
   try {
     const url = new URL(request.url);
@@ -24,8 +24,8 @@ export async function api(request, store) {
       }
       throw new GameError('Не удалось создать комнату. Попробуйте ещё раз.', 503);
     }
-    // Keep existing six-character invitations valid; new rooms use four digits.
-    const match = url.pathname.match(/^\/api\/rooms\/([0-9]{4}|[A-Z2-9]{6})(?:\/(join|action))?$/);
+    // New rooms use six digits. Keep older four-digit and letter-code invitations valid.
+    const match = url.pathname.match(/^\/api\/rooms\/([0-9]{6}|[0-9]{4}|[A-Z2-9]{6})(?:\/(join|action))?$/);
     if (!match) throw new GameError('Комната не найдена.', 404);
     const [, code, route] = match;
     if (request.method !== (route ? 'POST' : 'GET')) throw new GameError('Метод не поддерживается.', 405);

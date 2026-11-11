@@ -1,4 +1,4 @@
-import { WORDS } from './words.js';
+import { DICTIONARIES } from './words.js';
 
 export class GameError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -11,13 +11,15 @@ const integer = (value, min, max, label) => {
   return n;
 };
 export function settings(input = {}, count = 0) {
+  const wordLanguage = input.wordLanguage ?? 'ru';
+  requireThat(Object.hasOwn(DICTIONARIES, wordLanguage), 'Неизвестный язык словаря.');
   const capacity = input.capacity === '' || input.capacity == null || input.capacity === 0 ? null : integer(input.capacity, 3, 1000000, 'Число игроков');
   requireThat(!capacity || capacity >= count, 'В комнате уже больше игроков.');
   const customWords = [...new Set(String(input.customWords || '').split(/[\n,;]/).map(w => w.trim()).filter(Boolean))];
   requireThat(customWords.length <= 1000 && customWords.every(w => w.length <= 60), 'До 1000 своих слов, каждое до 60 символов.');
   const useDefaultWords = input.useDefaultWords !== false;
   requireThat(useDefaultWords || customWords.length > 0, 'Добавьте свои слова или включите встроенный словарь.');
-  return { capacity, duration: null, miningDuration: 60, cycles: integer(input.cycles ?? 1, 1, 20, 'Количество кругов'), customWords, useDefaultWords };
+  return { capacity, wordLanguage, duration: null, miningDuration: 60, cycles: integer(input.cycles ?? 1, 1, 20, 'Количество кругов'), customWords, useDefaultWords };
 }
 export function newPlayer(name, token) {
   name = String(name || '').trim();
@@ -106,7 +108,7 @@ function ensureState(room) {
   return changed;
 }
 function dictionary(room) {
-  return [...(room.settings.useDefaultWords ? WORDS : []), ...room.settings.customWords];
+  return [...(room.settings.useDefaultWords ? DICTIONARIES[room.settings.wordLanguage || 'ru'] : []), ...room.settings.customWords];
 }
 function hasAlternative(room, word) {
   return dictionary(room).some(w => normalize(w) !== normalize(word));
@@ -280,7 +282,7 @@ export function view(room, token, now = Date.now()) {
   return {
     code: room.code, me: p.id, hostId: room.hostId, phase: room.phase,
     players: room.players.map(({ token, ...player }) => ({ ...player, turnsExplained: room.progress?.[player.id]?.explained ?? 0, turnsGuessed: room.progress?.[player.id]?.guessed ?? 0 })),
-    settings: { ...room.settings, customWords: p.id === room.hostId && room.phase === 'lobby' ? room.settings.customWords.join('\n') : '', customCount: room.settings.customWords.length },
+    settings: { ...room.settings, wordLanguage: room.settings.wordLanguage || 'ru', wordCounts: Object.fromEntries(Object.entries(DICTIONARIES).map(([language, words]) => [language, words.length])), customWords: p.id === room.hostId && room.phase === 'lobby' ? room.settings.customWords.join('\n') : '', customCount: room.settings.customWords.length },
     turn: room.turn, totalTurns: room.totalTurns, serverNow: now,
     round: r && { id: r.id, names: r.names, role, explainerId: r.explainerId, guesserId: r.guesserId,
       word: role !== 'guesser' || reveal ? r.word : null,

@@ -36,7 +36,7 @@ try {
   const page = await worker.fetch(new Request('https://word-mine.test/'), { DB });
   assert.match(await page.text(), /<title>Word Mine<\/title>/);
   const host = await request('/api/rooms', { name: 'Host', settings: { useDefaultWords: false, customWords: 'Самолёт' } }, null, 201);
-  assert.match(host.room.code, /^[0-9]{4}$/);
+  assert.match(host.room.code, /^[0-9]{6}$/);
   const base = '/api/rooms/' + host.room.code;
   const guesser = await request(base + '/join', { name: 'Guesser' });
   const miner = await request(base + '/join', { name: 'Miner' });

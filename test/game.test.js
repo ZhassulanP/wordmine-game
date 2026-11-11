@@ -165,7 +165,7 @@ test('API supports code-only joins while requiring a session for state access',a
   assert.equal((await call(store,'/api/rooms',{name:''})).status,400);
   const created=await call(store,'/api/rooms',{name:'Host'});
   assert.equal(created.status,201);
-  assert.match(created.room.code,/^[0-9]{4}$/);
+  assert.match(created.room.code,/^[0-9]{6}$/);
   assert.equal((await call(store,`/api/rooms/${created.room.code}`)).status,401);
   const guest=await call(store,`/api/rooms/${created.room.code}/join`,{name:'Guest'});
   assert.equal(guest.status,200);
@@ -173,17 +173,22 @@ test('API supports code-only joins while requiring a session for state access',a
   assert.equal((await call(store,`/api/rooms/${created.room.code}`,null,created.token)).room.me,created.room.me);
   assert.equal((await call(store,`/api/rooms/${created.room.code}/action`,{action:'leave'},created.token)).left,true);
 });
-test('four-digit codes preserve leading zeros and retry collisions without overwriting rooms',async()=>{
+test('six-digit codes retry collisions and preserve older four-digit invitations',async()=>{
   const store=memoryStore();
+  const six=createRoom('001234',newPlayer('Six Host','six-token'),{},Date.now());await store.create(six);
+  const sixJoined=await call(store,'/api/rooms/001234/join',{name:'Six Guest'});
+  assert.equal(sixJoined.status,200);assert.equal(sixJoined.room.code,'001234');
+  const letter=createRoom('ABC234',newPlayer('Letter Host','letter-token'),{},Date.now());await store.create(letter);
+  assert.equal((await call(store,'/api/rooms/ABC234/join',{name:'Guest'})).status,200);
   const seeded=createRoom('0275',newPlayer('Host','original-token'),{},Date.now());await store.create(seeded);
   const joined=await call(store,'/api/rooms/0275/join',{name:'Guest'});
   assert.equal(joined.status,200);assert.equal(joined.room.code,'0275');
   let attempts=0;
-  const colliding={...store,async create(room){assert.match(room.code,/^[0-9]{4}$/);return ++attempts<=5?false:store.create(room);}};
+  const colliding={...store,async create(room){assert.match(room.code,/^[0-9]{6}$/);return ++attempts<=5?false:store.create(room);}};
   const created=await call(colliding,'/api/rooms',{name:'New Host'});
-  assert.equal(created.status,201);assert.equal(attempts,6);assert.match(created.room.code,/^[0-9]{4}$/);
+  assert.equal(created.status,201);assert.equal(attempts,6);assert.match(created.room.code,/^[0-9]{6}$/);
   assert.equal((await call(store,'/api/rooms/0275',null,'original-token')).room.players.length,2);
-  for(const invalid of ['123','12345','12a4'])assert.equal((await call(store,`/api/rooms/${invalid}`)).status,404);
+  for(const invalid of ['123','12345','1234567','12a4','00000x'])assert.equal((await call(store,`/api/rooms/${invalid}`)).status,404);
 });
 test('concurrent API joins and mine submissions are not lost',async()=>{
   const store=memoryStore(),created=await call(store,'/api/rooms',{name:'Host'});
